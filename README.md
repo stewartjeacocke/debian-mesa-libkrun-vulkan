@@ -13,7 +13,7 @@ allocation-alignment patch, enabling GPU access from Debian-based images.
 
 ```sh
 podman build -t mesa-vulkan-example ./example
-podman run --rm mesa-vulkan-example vulkaninfo
+podman run --device=/dev/dri --rm mesa-vulkan-example vulkaninfo | grep GPU
 ```
 
 ## Build the package
