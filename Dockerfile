@@ -28,14 +28,6 @@ RUN set -eux; \
   dch --local '+venus16k' --distribution UNRELEASED \
     'Build Venus with 16 KiB allocation alignment.'; \
   dpkg-buildpackage -us -uc -b; \
-  package=$(find .. -maxdepth 1 -name "mesa-vulkan-drivers_*_$(dpkg --print-architecture).deb" -print -quit); \
-  test -n "${package}"; \
-  install -D -m 0644 "${package}" /out/mesa-vulkan-drivers.deb
-
-# Install the locally built Mesa package into the final runtime image.
-FROM buildpack-deps:stable
-
-COPY --from=venus-builder /out/mesa-vulkan-drivers.deb /tmp/
-RUN set -eux; \
-  apt-get install -y --no-install-recommends /tmp/mesa-vulkan-drivers.deb; \
-  rm -rf /var/lib/apt/lists/* /tmp/mesa-vulkan-drivers.deb
+  mkdir /dist; \
+  cp ../mesa-vulkan-drivers_*.deb /dist; \
+  (cd /dist && sha256sum * > SHA256SUMS)
