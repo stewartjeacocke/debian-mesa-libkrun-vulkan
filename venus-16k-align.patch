@@ -1,0 +1,85 @@
+Description: virtio/vulkan: force 16 KiB allocation alignment
+Origin: https://gitlab.freedesktop.org/slp/mesa/-/commit/761ef1ec5ff2aae1cc3dc8bbc22b3d06ef04b549
+Forwarded: not-needed
+
+Force 16 KiB alignment for Venus (virtio-vulkan) allocations.
+
+Required for GPU access on containers running with libkrun
+on Mac silicon.
+
+Without this, every Vulkan call in the container dies:
+
+    vulkaninfo
+    ERROR at ./vulkaninfo/./vulkaninfo.h:458:vkCreateInstance failed with ERROR_OUT_OF_HOST_MEMORY
+
+Upstream is gitlab.freedesktop.org/slp/mesa, branch
+mesa-libkrun-vulkan, commit 761ef1ec, "virtio/vulkan: force 16k alignment
+for allocations (HACK)".
+https://gitlab.freedesktop.org/slp/mesa/-/commit/761ef1ec5ff2aae1cc3dc8bbc22b3d06ef04b549
+
+Added over upstream: util/u_math.h includes, because align64() lives
+there
+
+--- a/src/virtio/vulkan/vn_ring.c
++++ b/src/virtio/vulkan/vn_ring.c
+@@ -9,6 +9,8 @@
+
+ #include "venus-protocol/vn_protocol_driver_transport.h"
+
++#include "util/u_math.h"
++
+ #include "vn_cs.h"
+ #include "vn_instance.h"
+ #include "vn_renderer.h"
+@@ -264,7 +266,8 @@
+    layout->extra_offset = layout->buffer_offset + layout->buffer_size;
+    layout->extra_size = extra_size;
+
+-   layout->shmem_size = layout->extra_offset + layout->extra_size;
++   layout->shmem_size =
++      align64(layout->extra_offset + layout->extra_size, 16384);
+ }
+
+ struct vn_ring *
+--- a/src/virtio/vulkan/vn_renderer_virtgpu.c
++++ b/src/virtio/vulkan/vn_renderer_virtgpu.c
+@@ -1240,6 +1240,8 @@
+    struct virtgpu *gpu = (struct virtgpu *)renderer;
+    const uint32_t blob_flags = virtgpu_bo_blob_flags(gpu, flags, external_handles);
+
++   size = align64(size, 16384);
++
+    uint32_t res_id;
+    uint32_t gem_handle = virtgpu_ioctl_resource_create_blob(
+       gpu, gpu->bo_blob_mem, blob_flags, size, mem_id, &res_id);
+@@ -1290,6 +1292,8 @@
+ {
+    struct virtgpu *gpu = (struct virtgpu *)renderer;
+
++   size = align64(size, 16384);
++
+    struct vn_renderer_shmem *cached_shmem =
+       vn_renderer_shmem_cache_get(&gpu->shmem_cache, size);
+    if (cached_shmem) {
+--- a/src/virtio/vulkan/vn_device_memory.c
++++ b/src/virtio/vulkan/vn_device_memory.c
+@@ -13,6 +13,8 @@
+ #include "venus-protocol/vn_protocol_driver_device_memory.h"
+ #include "venus-protocol/vn_protocol_driver_transport.h"
+
++#include "util/u_math.h"
++
+ #include "vn_android.h"
+ #include "vn_buffer.h"
+ #include "vn_device.h"
+@@ -30,6 +32,10 @@
+ {
+    VkDevice dev_handle = vn_device_to_handle(dev);
+    VkDeviceMemory mem_handle = vn_device_memory_to_handle(mem);
++
++   ((VkMemoryAllocateInfo *)alloc_info)->allocationSize =
++      align64(alloc_info->allocationSize, 16384);
++
+    if (VN_PERF(NO_ASYNC_MEM_ALLOC)) {
+       return vn_call_vkAllocateMemory(dev->primary_ring, dev_handle,
+                                       alloc_info, NULL, &mem_handle);
