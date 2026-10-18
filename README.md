@@ -1,6 +1,11 @@
 # Debian Mesa for libkrun Vulkan
 
-Rebuilds Debian's `mesa-vulkan-drivers` with the Venus 16 KiB allocation-alignment patch required for Vulkan in libkrun-based Apple Silicon containers.
+Podman's documented [GPU access setup](https://podman-desktop.io/docs/podman/gpu) 
+for Apple Silicon Macs only works with Fedora-based images. It uses a patched
+[mesa vulkan package](https://copr.fedorainfracloud.org/coprs/slp/mesa-libkrun-vulkan/).
+
+This project rebuilds Debian's `mesa-vulkan-drivers` with the same Venus 16 KiB 
+allocation-alignment patch, enabling GPU access from Debian-based images.
 
 ## Use the package
 
